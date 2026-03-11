@@ -35,6 +35,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
     </div>
 <?php endif; ?>
 
+<p class="adm-description">Настройте рабочую неделю врача: отметьте рабочие дни и укажите время начала и окончания работы. Например: понедельник и вторник 09:00–18:00, среда — выходной.</p>
+
 <form method="post" action="" id="schedule-form">
     <?= bitrix_sessid_post() ?>
     <table class="adm-detail-content-table edit-table">
@@ -57,13 +59,16 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
                     <td><?= htmlspecialchars($name) ?></td>
                     <td>
                         <input type="hidden" name="schedule[<?= $code ?>][is_working]" value="N">
-                        <input type="checkbox" name="schedule[<?= $code ?>][is_working]" value="Y"<?= $checked ?> id="ch_<?= $code ?>">
+                        <label for="ch_<?= $code ?>" class="adm-checkbox-label">
+                            <input type="checkbox" name="schedule[<?= $code ?>][is_working]" value="Y"<?= $checked ?> id="ch_<?= $code ?>" aria-label="Рабочий день: <?= htmlspecialchars($name) ?>">
+                            <?= $row['is_working'] === 'N' ? 'Выходной' : 'Рабочий' ?>
+                        </label>
                     </td>
                     <td>
-                        <input type="time" name="schedule[<?= $code ?>][from]" value="<?= htmlspecialchars($row['from']) ?>" class="adm-input">
+                        <input type="time" name="schedule[<?= $code ?>][from]" value="<?= htmlspecialchars($row['from']) ?>" class="adm-input" id="from_<?= $code ?>" aria-label="Начало работы: <?= htmlspecialchars($name) ?>">
                     </td>
                     <td>
-                        <input type="time" name="schedule[<?= $code ?>][to]" value="<?= htmlspecialchars($row['to']) ?>" class="adm-input">
+                        <input type="time" name="schedule[<?= $code ?>][to]" value="<?= htmlspecialchars($row['to']) ?>" class="adm-input" id="to_<?= $code ?>" aria-label="Окончание работы: <?= htmlspecialchars($name) ?>">
                     </td>
                 </tr>
             <?php endforeach; ?>

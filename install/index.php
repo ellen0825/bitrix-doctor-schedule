@@ -36,28 +36,34 @@ class vit_doctor_schedule extends CModule
     {
         ModuleManager::registerModule($this->MODULE_ID);
         $this->InstallDefaultSchedule();
-        $this->CopyAdminPage();
+        $this->CopyAdminFiles();
         return true;
     }
 
     public function DoUninstall(): bool
     {
-        $adminFile = Application::getDocumentRoot() . '/bitrix/admin/vit_doctor_schedule.php';
-        if (is_file($adminFile)) {
-            @unlink($adminFile);
+        $adminDir = Application::getDocumentRoot() . '/bitrix/admin';
+        foreach (['vit_doctor_schedule.php', 'vit_doctor_schedule.menu.php'] as $file) {
+            $path = $adminDir . '/' . $file;
+            if (is_file($path)) {
+                @unlink($path);
+            }
         }
         Option::delete($this->MODULE_ID);
         ModuleManager::unRegisterModule($this->MODULE_ID);
         return true;
     }
 
-    private function CopyAdminPage(): void
+    private function CopyAdminFiles(): void
     {
         $moduleRoot = dirname(__DIR__);
-        $src = $moduleRoot . '/admin/vit_doctor_schedule.php';
-        $dst = Application::getDocumentRoot() . '/bitrix/admin/vit_doctor_schedule.php';
-        if (is_file($src)) {
-            copy($src, $dst);
+        $adminDir = Application::getDocumentRoot() . '/bitrix/admin';
+        foreach (['vit_doctor_schedule.php', 'vit_doctor_schedule.menu.php'] as $file) {
+            $src = $moduleRoot . '/admin/' . $file;
+            $dst = $adminDir . '/' . $file;
+            if (is_file($src)) {
+                copy($src, $dst);
+            }
         }
     }
 
