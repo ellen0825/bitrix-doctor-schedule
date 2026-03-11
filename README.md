@@ -2,6 +2,15 @@
 
 Модуль для решения [Персональный сайт врача (vit.doctor)](https://marketplace.1c-bitrix.ru/solutions/vit.doctor/). Добавляет в админку Bitrix настройку **рабочей недели врача**: рабочие дни и время начала/окончания работы.
 
+## Краткое описание архитектуры решения
+
+- **Хранение:** таблица БД `b_vit_doctor_schedule` — одна строка на день недели на врача (`DOCTOR_ID`, `WEEKDAY`, `IS_WORKING`, `TIME_FROM`, `TIME_TO`). Уникальный ключ `(DOCTOR_ID, WEEKDAY)`.
+- **Доступ к данным:** D7 Entity `ScheduleTable` и сервис `Schedule` с методами `getWeekSchedule($doctorId)` и `saveWeekSchedule($data, $doctorId)`. Для одного врача используется `DOCTOR_ID = 0`.
+- **Админка:** страница в `bitrix/admin/` (форма по 7 дням), при сохранении вызывает `Schedule::saveWeekSchedule()`; при открытии — `Schedule::getWeekSchedule(0)`.
+- **Установка/снятие:** при установке создаётся таблица (`install/db/mysql/install.sql`) и заполняется шаблон Пн–Пт 09:00–18:00; при удалении модуля таблица удаляется (`uninstall.sql`).
+
+Подробнее — в разделе «Архитектура хранения и управления расписанием» ниже.
+
 ## Требования
 
 - 1С-Битрикс: Управление сайтом
