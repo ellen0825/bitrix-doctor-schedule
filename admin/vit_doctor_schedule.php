@@ -2,61 +2,31 @@
 /**
  * Управление расписанием врача.
  * Настройка рабочей недели: рабочие дни, время начала и окончания работы.
- * Пример: Понедельник 09:00–18:00, Вторник 09:00–18:00, Среда — выходной.
+ * Данные хранятся в таблице b_vit_doctor_schedule (см. README — архитектура).
  */
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_before.php';
 
-use Bitrix\Main\Config\Option;
 use Bitrix\Main\Loader;
+use Vit\DoctorSchedule\Schedule;
 
 $MODULE_ID = 'vit.doctor.schedule';
+$DOCTOR_ID = 0; // расписание по умолчанию (один врач)
+
 if (!$USER->IsAdmin()) {
     $APPLICATION->AuthForm('Доступ запрещён.');
 }
 Loader::includeModule($MODULE_ID);
 
-// Дни недели (Пн–Вс)
-$DAYS = ['MON' => 'Понедельник', 'TUE' => 'Вторник', 'WED' => 'Среда', 'THU' => 'Четверг', 'FRI' => 'Пятница', 'SAT' => 'Суббота', 'SUN' => 'Воскресенье'];
-$OPTION_NAME = 'doctor_week_schedule';
-
-function normalizeTime($time) {
-    if (preg_match('/^\d{1,2}:\d{2}$/', (string)$time)) {
-        $parts = explode(':', $time);
-        return sprintf('%02d:%02d', (int)$parts[0], (int)$parts[1]);
-    }
-    return '09:00';
-}
-
+$DAYS = Schedule::getDayNames();
 $message = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
     $raw = $_POST['schedule'] ?? [];
-    $saved = [];
-    foreach (array_keys($DAYS) as $code) {
-        $row = $raw[$code] ?? [];
-        $isWorking = (!empty($row['is_working']) && (string)$row['is_working'] === 'Y') ? 'Y' : 'N';
-        $saved[$code] = [
-            'is_working' => $isWorking,
-            'from' => normalizeTime($row['from'] ?? '09:00'),
-            'to'   => normalizeTime($row['to'] ?? '18:00'),
-        ];
-    }
-    Option::set($MODULE_ID, $OPTION_NAME, json_encode($saved, JSON_UNESCAPED_UNICODE));
+    Schedule::saveWeekSchedule($raw, $DOCTOR_ID);
     $message = 'Расписание сохранено.';
 }
 
-$json = Option::get($MODULE_ID, $OPTION_NAME, '{}');
-$data = json_decode($json, true);
-if (!is_array($data)) {
-    $data = [];
-}
-$schedule = [];
-foreach (array_keys($DAYS) as $code) {
-    $schedule[$code] = [
-        'is_working' => $data[$code]['is_working'] ?? 'N',
-        'from'       => $data[$code]['from'] ?? '09:00',
-        'to'         => $data[$code]['to'] ?? '18:00',
-    ];
-}
+$schedule = Schedule::getWeekSchedule($DOCTOR_ID);
 
 $APPLICATION->SetTitle('Расписание врача');
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';

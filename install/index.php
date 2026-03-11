@@ -1,11 +1,14 @@
 <?php
 /**
  * Установка модуля vit.doctor.schedule
+ * Хранение расписания: таблица b_vit_doctor_schedule (см. README — архитектура).
  */
+use Bitrix\Main\Application;
+use Bitrix\Main\Config\Option;
+use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\ModuleManager;
-use Bitrix\Main\Config\Option;
-use Bitrix\Main\Application;
+use Vit\DoctorSchedule\Schedule;
 
 Loc::loadMessages(__FILE__);
 
@@ -35,8 +38,9 @@ class vit_doctor_schedule extends CModule
     public function DoInstall(): bool
     {
         ModuleManager::registerModule($this->MODULE_ID);
-        $this->InstallDefaultSchedule();
+        $this->InstallDB();
         $this->CopyAdminFiles();
+        $this->InstallDefaultSchedule();
         return true;
     }
 
@@ -49,8 +53,31 @@ class vit_doctor_schedule extends CModule
                 @unlink($path);
             }
         }
+        $this->UninstallDB();
         Option::delete($this->MODULE_ID);
         ModuleManager::unRegisterModule($this->MODULE_ID);
+        return true;
+    }
+
+    /** Создание таблицы b_vit_doctor_schedule */
+    public function InstallDB(): bool
+    {
+        $connection = Application::getConnection();
+        $sql = (string) file_get_contents(__DIR__ . '/db/mysql/install.sql');
+        if ($sql !== '') {
+            $connection->query(trim($sql));
+        }
+        return true;
+    }
+
+    /** Удаление таблицы при снятии модуля */
+    public function UninstallDB(): bool
+    {
+        $connection = Application::getConnection();
+        $sql = (string) file_get_contents(__DIR__ . '/db/mysql/uninstall.sql');
+        if ($sql !== '') {
+            $connection->query(trim($sql));
+        }
         return true;
     }
 
@@ -67,20 +94,19 @@ class vit_doctor_schedule extends CModule
         }
     }
 
-    /**
-     * Дефолтное расписание: Пн–Пт 09:00–18:00, Сб–Вс выходные
-     */
+    /** Дефолтное расписание: Пн–Пт 09:00–18:00, Сб–Вс выходные (DOCTOR_ID=0) */
     private function InstallDefaultSchedule(): void
     {
+        Loader::includeModule($this->MODULE_ID);
         $default = [
             'MON' => ['is_working' => 'Y', 'from' => '09:00', 'to' => '18:00'],
             'TUE' => ['is_working' => 'Y', 'from' => '09:00', 'to' => '18:00'],
             'WED' => ['is_working' => 'Y', 'from' => '09:00', 'to' => '18:00'],
             'THU' => ['is_working' => 'Y', 'from' => '09:00', 'to' => '18:00'],
             'FRI' => ['is_working' => 'Y', 'from' => '09:00', 'to' => '18:00'],
-            'SAT' => ['is_working' => 'N'],
-            'SUN' => ['is_working' => 'N'],
+            'SAT' => ['is_working' => 'N', 'from' => '09:00', 'to' => '18:00'],
+            'SUN' => ['is_working' => 'N', 'from' => '09:00', 'to' => '18:00'],
         ];
-        Option::set($this->MODULE_ID, 'doctor_week_schedule', json_encode($default, JSON_UNESCAPED_UNICODE));
+        Schedule::saveWeekSchedule($default, 0);
     }
 }

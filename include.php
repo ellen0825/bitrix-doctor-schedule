@@ -9,6 +9,7 @@ use Bitrix\Main\Loader;
 Loader::registerAutoLoadClasses(
     'vit.doctor.schedule',
     [
-        'Vit\\DoctorSchedule\\Schedule' => 'lib/Schedule.php',
+        'Vit\\DoctorSchedule\\Schedule'       => 'lib/Schedule.php',
+        'Vit\\DoctorSchedule\\ScheduleTable'  => 'lib/ScheduleTable.php',
     ]
 );

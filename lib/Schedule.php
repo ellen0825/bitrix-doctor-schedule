@@ -2,17 +2,17 @@
 
 namespace Vit\DoctorSchedule;
 
-use Bitrix\Main\Config\Option;
+use Bitrix\Main\ArgumentException;
+use Bitrix\Main\ObjectPropertyException;
+use Bitrix\Main\SystemException;
 
 /**
- * Расписание рабочей недели врача.
- * Хранение: одна опция модуля (JSON). Легко расширить до нескольких врачей (массив по doctor_id).
+ * Сервис расписания рабочей недели врача.
+ * Хранение: таблица b_vit_doctor_schedule (одна строка на день на врача).
+ * DOCTOR_ID = 0 — расписание по умолчанию (один врач или шаблон).
  */
 class Schedule
 {
-    public const MODULE_ID = 'vit.doctor.schedule';
-    public const OPTION_SCHEDULE = 'doctor_week_schedule';
-
     /** Коды дней недели (Пн–Вс) */
     public const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -32,22 +32,34 @@ class Schedule
 
     /**
      * Получить расписание на неделю.
-     * @return array<string, array{is_working: string, from?: string, to?: string}>
+     * @param int $doctorId 0 = расписание по умолчанию
+     * @return array<string, array{is_working: string, from: string, to: string}>
+     * @throws ArgumentException
+     * @throws ObjectPropertyException
+     * @throws SystemException
      */
-    public static function getWeekSchedule(): array
+    public static function getWeekSchedule(int $doctorId = 0): array
     {
-        $json = Option::get(self::MODULE_ID, self::OPTION_SCHEDULE, '{}');
-        $data = json_decode($json, true);
-        if (!is_array($data)) {
-            $data = [];
+        $rows = ScheduleTable::getList([
+            'filter' => ['=DOCTOR_ID' => $doctorId],
+            'select' => ['WEEKDAY', 'IS_WORKING', 'TIME_FROM', 'TIME_TO'],
+        ])->fetchAll();
+
+        $byDay = [];
+        foreach ($rows as $row) {
+            $byDay[$row['WEEKDAY']] = [
+                'is_working' => $row['IS_WORKING'],
+                'from'       => $row['TIME_FROM'],
+                'to'         => $row['TIME_TO'],
+            ];
         }
 
         $result = [];
         foreach (self::DAYS as $day) {
-            $result[$day] = [
-                'is_working' => $data[$day]['is_working'] ?? 'N',
-                'from'       => $data[$day]['from'] ?? '09:00',
-                'to'         => $data[$day]['to'] ?? '18:00',
+            $result[$day] = $byDay[$day] ?? [
+                'is_working' => 'N',
+                'from'       => '09:00',
+                'to'         => '18:00',
             ];
         }
         return $result;
@@ -55,21 +67,40 @@ class Schedule
 
     /**
      * Сохранить расписание на неделю.
-     * @param array<string, array{is_working: string, from?: string, to?: string}> $data
+     * @param array<string, array{is_working?: string, from?: string, to?: string}> $data
+     * @param int $doctorId 0 = расписание по умолчанию
+     * @throws ArgumentException
+     * @throws ObjectPropertyException
+     * @throws SystemException
      */
-    public static function saveWeekSchedule(array $data): void
+    public static function saveWeekSchedule(array $data, int $doctorId = 0): void
     {
-        $normalized = [];
         foreach (self::DAYS as $day) {
             $row = $data[$day] ?? [];
             $isWorking = (!empty($row['is_working']) && (string)$row['is_working'] === 'Y') ? 'Y' : 'N';
-            $normalized[$day] = [
-                'is_working' => $isWorking,
-                'from'       => self::normalizeTime($row['from'] ?? '09:00'),
-                'to'         => self::normalizeTime($row['to'] ?? '18:00'),
+            $from = self::normalizeTime($row['from'] ?? '09:00');
+            $to   = self::normalizeTime($row['to'] ?? '18:00');
+
+            $existing = ScheduleTable::getList([
+                'filter' => ['=DOCTOR_ID' => $doctorId, '=WEEKDAY' => $day],
+                'select' => ['ID'],
+                'limit'  => 1,
+            ])->fetch();
+
+            $fields = [
+                'DOCTOR_ID'  => $doctorId,
+                'WEEKDAY'    => $day,
+                'IS_WORKING' => $isWorking,
+                'TIME_FROM'  => $from,
+                'TIME_TO'    => $to,
             ];
+
+            if ($existing) {
+                ScheduleTable::update($existing['ID'], $fields);
+            } else {
+                ScheduleTable::add($fields);
+            }
         }
-        Option::set(self::MODULE_ID, self::OPTION_SCHEDULE, json_encode($normalized, JSON_UNESCAPED_UNICODE));
     }
 
     private static function normalizeTime(string $time): string
