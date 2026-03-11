@@ -86,8 +86,12 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
     function toggleTime(tr) {
         var ch = tr.querySelector('input[type="checkbox"]');
         var inputs = tr.querySelectorAll('input[type="time"]');
+        var label = tr.querySelector('.adm-checkbox-label');
         var on = ch && ch.checked;
         inputs.forEach(function(inp) { inp.disabled = !on; });
+        if (label && label.lastChild && label.lastChild.nodeType === 3) {
+            label.lastChild.textContent = on ? 'Рабочий' : 'Выходной';
+        }
     }
     form.querySelectorAll('tbody tr').forEach(function(tr) {
         var ch = tr.querySelector('input[type="checkbox"]');
