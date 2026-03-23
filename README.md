@@ -1,4 +1,4 @@
-# Модуль «Расписание врача» (vit.doctor.schedule)
+# Модуль «Расписание врача» (vit.doctor.scheduale)
 
 Модуль для решения [Персональный сайт врача (vit.doctor)](https://marketplace.1c-bitrix.ru/solutions/vit.doctor/). Добавляет в админку Bitrix настройку **рабочей недели врача**: рабочие дни и время начала/окончания работы.
 
